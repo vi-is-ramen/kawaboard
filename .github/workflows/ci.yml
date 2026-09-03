@@ -22,4 +22,4 @@ jobs:
       - name: Pyright
         run: uv run pyright
       - name: Import sanity check
-        run: uv run python -c "import kawaboard; print('kawaboard ok ^_^')"
+        run: uv run python -c "import kawaboard; print('OK')"

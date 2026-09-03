@@ -19,6 +19,8 @@ clean:
 lint:
     uv run ruff check .
     uv run ruff format --check .
+    uv run pyright
+    uv run python -c "import kawaboard; print('OK')"
 
 typecheck:
     uv run pyright
