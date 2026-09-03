@@ -1,0 +1,102 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+env:
+  PYTHON: '3.14'
+
+jobs:
+  windows-exe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v5
+        with: { python-version: '${{ env.PYTHON }}' }
+      - name: Build onefile PE
+        run: uv run --group dev python packaging/build.py --onefile
+      - name: Rename
+        shell: pwsh
+        run: |
+          $v = '${{ github.ref_name }}' -replace '^v',''
+          Move-Item dist\kawaboard.exe "dist\kawaboard-$v-windows-x64.exe"
+      - uses: actions/upload-artifact@v4
+        with: { name: win-exe, path: 'dist/*.exe' }
+
+  linux-elf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v5
+        with: { python-version: '${{ env.PYTHON }}' }
+      - name: Build onefile ELF
+        run: uv run --group dev python packaging/build.py --onefile
+      - name: Rename
+        run: |
+          v=${GITHUB_REF_NAME#v}
+          chmod +x dist/kawaboard
+          mv dist/kawaboard "dist/kawaboard-$v-linux-x64"
+      - uses: actions/upload-artifact@v4
+        with: { name: linux-elf, path: 'dist/kawaboard-*' }
+
+  packages:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v5
+        with: { python-version: '${{ env.PYTHON }}' }
+      - name: Build onedir (без --onefile, системные либы в рантайме)
+        run: uv run --group dev python packaging/build.py
+      - name: Install fpm
+        run: sudo gem install fpm --no-document
+      - name: Stage + deb + pacman(zst)
+        run: |
+          set -euo pipefail
+          VER=${GITHUB_REF_NAME#v}; [ -n "$VER" ] || VER=0.0.0
+          STAGE=packaging/stage
+          mkdir -p "$STAGE/usr/lib/kawaboard" "$STAGE/usr/bin" "$STAGE/usr/share/applications"
+          cp -r dist/kawaboard/. "$STAGE/usr/lib/kawaboard/"
+          install -m755 packaging/kawaboard-launcher.sh "$STAGE/usr/bin/kawaboard"
+          install -m644 packaging/kawaboard.desktop "$STAGE/usr/share/applications/kawaboard.desktop"
+
+          fpm -s dir -t deb -n kawaboard -v "$VER" -a amd64 \
+            --maintainer "Ivan Chetchasov <vi.is.chapmann@gmail.com>" \
+            --url "https://github.com/vi-is-ramen/kawaboard" \
+            --description "Kawaii drawing board + x86 asm toolkit" \
+            --deb-recommends "chromium | google-chrome-stable | firefox" \
+            -C "$STAGE" usr
+
+          fpm -s dir -t pacman -n kawaboard -v "$VER" -a x86_64 \
+            --maintainer "Ivan Chetchasov <vi.is.chapmann@gmail.com>" \
+            --url "https://github.com/vi-is-ramen/kawaboard" \
+            --description "Kawaii drawing board + x86 asm toolkit" \
+            --pacman-compression zst \
+            --pacman-optdepends "chromium: браузер для UI" "firefox: альтернативный браузер" \
+            -C "$STAGE" usr
+      - uses: actions/upload-artifact@v4
+        with: { name: packages, path: 'kawaboard_*' }
+
+  release:
+    needs: [windows-exe, linux-elf, packages]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v4
+        with: { path: assets }
+      - name: Add netinst
+        run: |
+          cp installer/kawaboard-netinst.ps1 assets/
+          ls -R assets
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            assets/**/*.exe
+            assets/**/kawaboard-*linux-x64
+            assets/**/*.deb
+            assets/**/*.pkg.tar.zst
+            assets/kawaboard-netinst.ps1
