@@ -9,6 +9,9 @@ wheels
 # Virtual environments
 .venv
 
+# Ruff
+.ruff_cache
+
 # Packaging artifacts (fpm)
 packaging/stage/
 kawaboard_*.deb
