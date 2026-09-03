@@ -76,7 +76,7 @@ jobs:
         run: |
           sudo gem install fpm --no-document
           sudo apt-get update -y
-          sudo apt-get install -y zstd
+          sudo apt-get install -y zstd libarchive-tools
       - name: Stage + deb + pacman(zst)
         run: |
           set -euo pipefail
