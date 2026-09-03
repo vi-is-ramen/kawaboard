@@ -75,8 +75,8 @@ jobs:
             --maintainer "Ivan Chetchasov <vi.is.chapmann@gmail.com>" \
             --url "https://github.com/vi-is-ramen/kawaboard" \
             --description "Kawaii drawing board + x86 asm toolkit" \
-            --pacman-compression zst \
-            --pacman-optdepends "chromium: браузер для UI" "firefox: альтернативный браузер" \
+            --pacman-compression zstd \
+            --pacman-optdepends "chromium" \
             -C "$STAGE" usr
       - uses: actions/upload-artifact@v4
         with: { name: packages, path: 'kawaboard_*' }
