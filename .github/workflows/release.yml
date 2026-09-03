@@ -90,16 +90,15 @@ jobs:
           fpm -s dir -t deb -n kawaboard -v "$VER" -a amd64 \
             --maintainer "Ivan Chetchasov <vi.is.chapmann@gmail.com>" \
             --url "https://github.com/vi-is-ramen/kawaboard" \
-            --description "Kawaii drawing board + x86 asm toolkit" \
+            --description "Kawaii drawing board with utilities!" \
             --deb-recommends "chromium | google-chrome-stable | firefox" \
             -C "$STAGE" usr
 
           fpm -s dir -t pacman -n kawaboard -v "$VER" -a x86_64 \
             --maintainer "Ivan Chetchasov <vi.is.chapmann@gmail.com>" \
             --url "https://github.com/vi-is-ramen/kawaboard" \
-            --description "Kawaii drawing board + x86 asm toolkit" \
+            --description "Kawaii drawing board with utilities!" \
             --pacman-compression zstd \
-            --pacman-optdepends "chromium" \
             -C "$STAGE" usr
       - name: Checksums
         run: sha256sum kawaboard_* > kawaboard-checksums.txt
