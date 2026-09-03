@@ -42,7 +42,7 @@
 (PowerShell):
 
 ```sh
-powershell -NoProfile -ExecutionPolicy Bypass -Command "iwr https://raw.githubusercontent.com/vi-is-ramen/kawaboard/main/installer/kawaboard-netinst.ps1 -UseBasicParsing | iex"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "iwr https://raw.githubusercontent.com/vi-is-ramen/kawaboard/refs/heads/main/installer/kawaboard-netinst.ps1 -UseBasicParsing | iex"
 ```
 
 Ставит в `%LOCALAPPDATA%\kawaboard`, создаёт ярлыки и запись
