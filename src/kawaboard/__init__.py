@@ -56,7 +56,7 @@ def convert_base(value: str, from_base: str, to_base: str) -> str:
         "Hex": 16,
         "Bin": 2,
         "Oct": 8,
-        }[from_base]
+    }[from_base]
     raw = "".join(value.split())
     if raw[0] == "0" and raw[1] in "oObBhH":
         raw = raw[2:]
