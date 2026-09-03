@@ -8,3 +8,10 @@ wheels
 
 # Virtual environments
 .venv
+
+# Packaging artifacts (fpm)
+packaging/stage/
+kawaboard_*.deb
+kawaboard_*.pkg.tar.zst
+kawaboard-*.sha256
+kawaboard-checksums.txt

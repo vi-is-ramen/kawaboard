@@ -12,8 +12,15 @@ build-dir:
 
 all: build build-dir
 
-check:
-    uv run python -c "import kawaboard; print('kawaboard ok ^_^')"
-
 clean:
-    python -c "import shutil; [shutil.rmtree(p, True) for p in ('build', 'dist')]"
+    uv run python -c "import shutil; [shutil.rmtree(p, True) for p in ('build', 'dist', 'packaging/stage')]"
+    rm -f kawaboard_*.deb kawaboard_*.pkg.tar.zst kawaboard-*.sha256 kawaboard-checksums.txt
+
+lint:
+    uv run ruff check .
+    uv run ruff format --check .
+
+typecheck:
+    uv run pyright
+
+ci: lint typecheck

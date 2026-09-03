@@ -23,10 +23,23 @@ jobs:
       - name: Rename
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
           $v = '${{ github.ref_name }}' -replace '^v',''
+          if (-not (Test-Path dist\kawaboard.exe)) { throw "dist\kawaboard.exe не найден — сборка упала" }
           Move-Item dist\kawaboard.exe "dist\kawaboard-$v-windows-x64.exe"
+      - name: Checksum
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Get-FileHash "dist\kawaboard-*-windows-x64.exe" -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash.ToLower())  $(Split-Path $_.Path -Leaf)" } |
+            Set-Content -Encoding ascii dist\kawaboard-windows-x64.sha256
       - uses: actions/upload-artifact@v4
-        with: { name: win-exe, path: 'dist/*.exe' }
+        with:
+          name: win-exe
+          path: |
+              dist/*.exe
+              dist/*.sha256
 
   linux-elf:
     runs-on: ubuntu-latest
@@ -38,11 +51,18 @@ jobs:
         run: uv run --group dev python packaging/build.py --onefile
       - name: Rename
         run: |
+          set -euo pipefail
           v=${GITHUB_REF_NAME#v}
+          [ -f dist/kawaboard ] || { echo "dist/kawaboard не найден — сборка упала" >&2; exit 1; }
           chmod +x dist/kawaboard
           mv dist/kawaboard "dist/kawaboard-$v-linux-x64"
+          sha256sum "dist/kawaboard-$v-linux-x64" > "dist/kawaboard-$v-linux-x64.sha256"
       - uses: actions/upload-artifact@v4
-        with: { name: linux-elf, path: 'dist/kawaboard-*' }
+        with:
+          name: linux-elf
+          path: |
+            dist/kawaboard-*linux-x64
+            dist/kawaboard-*.sha256
 
   packages:
     runs-on: ubuntu-latest
@@ -52,8 +72,11 @@ jobs:
         with: { python-version: '${{ env.PYTHON }}' }
       - name: Build onedir (без --onefile, системные либы в рантайме)
         run: uv run --group dev python packaging/build.py
-      - name: Install fpm
-        run: sudo gem install fpm --no-document
+      - name: Install fpm + zstd
+        run: |
+          sudo gem install fpm --no-document
+          sudo apt-get update -y
+          sudo apt-get install -y zstd
       - name: Stage + deb + pacman(zst)
         run: |
           set -euo pipefail
@@ -71,18 +94,25 @@ jobs:
             --deb-recommends "chromium | google-chrome-stable | firefox" \
             -C "$STAGE" usr
 
-        # fpm -s dir -t pacman -n kawaboard -v "$VER" -a x86_64 \
-        #   --maintainer "Ivan Chetchasov <vi.is.chapmann@gmail.com>" \
-        #   --url "https://github.com/vi-is-ramen/kawaboard" \
-        #   --description "Kawaii drawing board + x86 asm toolkit" \
-        #   --pacman-compression zstd \
-        #   --pacman-optdepends "chromium" \
-        #   -C "$STAGE" usr
+          fpm -s dir -t pacman -n kawaboard -v "$VER" -a x86_64 \
+            --maintainer "Ivan Chetchasov <vi.is.chapmann@gmail.com>" \
+            --url "https://github.com/vi-is-ramen/kawaboard" \
+            --description "Kawaii drawing board + x86 asm toolkit" \
+            --pacman-compression zstd \
+            --pacman-optdepends "chromium" \
+            -C "$STAGE" usr
+      - name: Checksums
+        run: sha256sum kawaboard_* > kawaboard-checksums.txt
       - uses: actions/upload-artifact@v4
-        with: { name: packages, path: 'kawaboard_*' }
+        with:
+          name: packages
+          path: |
+            kawaboard_*
+            kawaboard-checksums.txt
 
   release:
     needs: [windows-exe, linux-elf, packages]
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -98,5 +128,7 @@ jobs:
             assets/**/*.exe
             assets/**/kawaboard-*linux-x64
             assets/**/*.deb
+            assets/**/*.pkg.tar.zst
+            assets/**/*.sha256
+            assets/**/kawaboard-checksums.txt
             assets/kawaboard-netinst.ps1
-          # assets/**/*.pkg.tar.zst

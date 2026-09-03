@@ -1,7 +1,9 @@
 [Desktop Entry]
 Name=kawaboard
 Comment=Kawaii drawing board with utilities!
+Comment[ru]=Кавайная доска для рисования с утилитами!
 Exec=kawaboard
+Icon=applications-graphics
 Terminal=false
 Type=Application
 Categories=Graphics;Development;

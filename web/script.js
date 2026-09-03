@@ -21,7 +21,7 @@ let drag = null;
 let drawing = false;
 let currentStroke = null;
 let eraseChanged = false;
-let lastX = 0, lastY = 0;
+let lastX = 0, lastY = 0, lastR = 0;
 
 let penColor = '#FFB6C1';
 let penSize = 3;
@@ -243,7 +243,7 @@ function eraseCircle(x, y, r) {
 }
 function eraseLine(x0, y0, r0, x1, y1, r1) {
     const d = Math.hypot(x1 - x0, y1 - y0);
-    const steps = Math.max(1, Math.ceil(d / Math.max(2, r / 2)));
+    const steps = Math.max(1, Math.ceil(d / Math.max(2, (r0 + r1) / 4)));
     let changed = false;
     for (let i = 0; i <= steps; i++) {
         const t = i / steps;
@@ -408,12 +408,38 @@ function getCoords(e) {
         y: (e.clientY - rect.top) * (canvas.height / rect.height)
     };
 }
+function endInteraction(e) {
+    if (e && canvas.hasPointerCapture && canvas.hasPointerCapture(e.pointerId)) {
+        canvas.releasePointerCapture(e.pointerId);
+    }
+    if (drawing) {
+        drawing = false;
+        if (currentTool === 'brush') { currentStroke = null; pushState(); }
+        if (currentTool === 'eraser' && eraseChanged) { eraseChanged = false; pushState(); }
+        return;
+    }
+    if (drag) {
+        if (drag.moved) pushState();
+        drag = null;
+        return;
+    }
+    if (marquee) {
+        const r = normRect(marquee);
+        marquee = null;
+        if (r.w > 4 || r.h > 4) selection = objects.filter(o => intersects(bboxOf(o), r));
+        redraw();
+    }
+}
+canvas.addEventListener('pointerup', endInteraction);
+canvas.addEventListener('pointerleave', endInteraction);
+canvas.addEventListener('pointercancel', endInteraction);
 canvas.addEventListener('pointerdown', (e) => {
     const { x, y } = getCoords(e);
     pressureSmooth = (e.pointerType === 'pen' && typeof e.pressure === 'number') ? e.pressure : 0.5;
 
     if (currentTool === 'brush') {
-        drawing = true;
+      drawing = true;
+      canvas.setPointerCapture(e.pointerId);
         const w = penSize * pressureFactor(e);
         currentStroke = { type: 'stroke', points: [{ x, y, w }], color: penColor, size: penSize };
         objects.push(currentStroke);
@@ -421,16 +447,20 @@ canvas.addEventListener('pointerdown', (e) => {
         redraw();
         return;
     }
-    if (currentTool === 'eraser') {
+  if (currentTool === 'eraser') {
+      canvas.setPointerCapture(e.pointerId);
         drawing = true;
-        eraseChanged = eraseCircle(x, y, eraserRadius());
+        canvas.setPointerCapture(e.pointerId);
+        lastR = eraserRadius() * pressureFactor(e);
+        eraseChanged = eraseCircle(x, y, lastR);
         lastX = x; lastY = y;
         redraw();
         return;
     }
     if (currentTool === 'text') { openEditor(x, y, null); return; }
     if (currentTool === 'select') {
-        const hit = hitTest({ x, y });
+      canvas.setPointerCapture(e.pointerId);
+          const hit = hitTest({ x, y });
         if (hit) {
             if (!selection.includes(hit)) selection = [hit];
             drag = { lastX: x, lastY: y, moved: false };
