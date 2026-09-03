@@ -51,18 +51,20 @@ def assemble(asm_line: str, mode: str = "16") -> str:
 
 @eel.expose
 def convert_base(value: str, from_base: str, to_base: str) -> str:
+    base = {
+        "Dec": 10,
+        "Hex": 16,
+        "Bin": 2,
+        "Oct": 8,
+        }[from_base]
     raw = "".join(value.split())
-    if (
-        (from_base == "Hex" and raw.startswith(("0x", "0X")))
-        or (from_base == "Bin" and raw.startswith(("0b", "0B")))
-        or (from_base == "Oct" and raw.startswith(("0o", "0O")))
-    ):
+    if raw[0] == "0" and raw[1] in "oObBhH":
         raw = raw[2:]
     if not raw:
         return "Ошибка: пустая строка"
     try:
-        num = {"Dec": int(raw), "Hex": int(raw, 16), "Bin": int(raw, 2), "Oct": int(raw, 8)}[from_base]
-    except ValueError, KeyError:
+        num = int(raw, base)
+    except ValueError:
         return f"Ошибка: неверное число для системы {from_base} (строка: '{raw}')"
     return {
         "Dec": str(num),
@@ -166,8 +168,8 @@ def open_board_file():
 # ---------- запуск ----------
 def main():
     eel.init(web_dir())
-    opts = {"size": (1400, 900), "port": 0}
-    for mode in ("chrome", "edgechromium", "chromium", "firefox"):
+    opts = {"size": (1000, 700), "port": 0}
+    for mode in ("chrome", "edge", "electron"):
         try:
             eel.start("index.html", mode=mode, **opts)  # pyright: ignore[reportArgumentType]
             return
